@@ -397,13 +397,3 @@ PLAQUE is designed for educational purposes to help students:
 - [ ] Version history and tracking
 - [ ] Custom rewriting templates
 
-## 📞 Contact
-
-- Website: https://plaque.app
-- Email: hello@plaque.app
-- Twitter: @plaqueapp
-
----
-
-**Made with ❤️ for academic integrity**
-#
