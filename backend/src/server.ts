@@ -12,6 +12,7 @@ import assignmentRoutes from './routes/assignmentRoutes';
 import peerReviewRoutes from './routes/peerReviewRoutes';
 
 const app: Express = express();
+app.set('trust proxy', 1);
 
 // Create uploads directory if it doesn't exist
 if (!fs.existsSync(config.uploadDir)) {
@@ -34,6 +35,7 @@ const limiter = rateLimit({
   windowMs: config.rateLimitWindow * 60 * 1000,
   max: config.rateLimitMaxRequests,
   message: 'Too many requests from this IP, please try again later.',
+  validate: false
 });
 
 app.use(limiter);

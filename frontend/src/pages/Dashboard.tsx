@@ -9,12 +9,13 @@ import AssignmentManager from '../components/AssignmentManager';
 import PeerReviewPanel from '../components/PeerReviewPanel';
 import FeedbackEditor from '../components/FeedbackEditor';
 import toast from 'react-hot-toast';
-import { FiTrash2, FiLoader } from 'react-icons/fi';
+import { FiTrash2, FiLoader, FiFileText } from 'react-icons/fi';
 
 const Dashboard: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isHumanizing, setIsHumanizing] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [activeTab, setActiveTab] = useState<
     'upload' | 'history' | 'assignments' | 'peer-review' | 'feedback'
   >('upload');
@@ -134,6 +135,40 @@ const Dashboard: React.FC = () => {
       toast.success('Document deleted');
     } catch (error) {
       toast.error('Failed to delete document');
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    if (!currentDocumentId) {
+      toast.error('No document selected');
+      return;
+    }
+
+    setIsGeneratingReport(true);
+    try {
+      const response = await documentAPI.downloadReportDocx(currentDocumentId);
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `plague_report_${currentDocumentId}.docx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Try opening in a new tab so users can inspect immediately if browser supports it.
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      toast.success('Professional report generated');
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.error || 'Failed to generate report. Please re-run analysis and try again.'
+      );
+    } finally {
+      setIsGeneratingReport(false);
     }
   };
 
@@ -353,11 +388,32 @@ const Dashboard: React.FC = () => {
                   </button>
                 </div>
 
+                <div className="bg-white p-8 rounded-lg shadow">
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+                    4. Professional Report
+                  </h2>
+                  <p className="text-gray-600 mb-4">
+                    Generate a Turnitin-style professional DOCX report for sharing, archiving, and review.
+                  </p>
+                  <button
+                    onClick={handleGenerateReport}
+                    disabled={isGeneratingReport}
+                    className="w-full bg-slate-800 text-white py-3 rounded-lg hover:bg-slate-900 disabled:bg-gray-400 font-semibold transition flex items-center justify-center space-x-2"
+                  >
+                    {isGeneratingReport ? (
+                      <FiLoader className="animate-spin" />
+                    ) : (
+                      <FiFileText />
+                    )}
+                    <span>{isGeneratingReport ? 'Generating report...' : 'Generate & View DOCX Report'}</span>
+                  </button>
+                </div>
+
                 {/* Comparison Section */}
                 {showComparison && currentAnalysis.humanizedText && (
                   <div className="bg-white p-8 rounded-lg shadow">
                     <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-                      4. Comparison
+                      5. Comparison
                     </h2>
                     <ComparisonView
                       original={currentAnalysis.originalText || originalText}

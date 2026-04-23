@@ -8,7 +8,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [formData, setFormData] = useState({ username: '', password: '' });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -40,16 +40,16 @@ const Login: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-gray-700 font-medium mb-2">
-              Email
+              Username
             </label>
             <input
-              type="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              name="username"
+              value={formData.username}
               onChange={handleChange}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="you@example.com"
+              placeholder="Your username"
             />
           </div>
 

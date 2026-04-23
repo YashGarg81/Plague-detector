@@ -43,6 +43,7 @@ router.post(
   authenticate,
   DocumentController.humanizeDocument
 );
+router.get('/:documentId/report/docx', authenticate, DocumentController.downloadDocxReport);
 router.get('/:documentId', authenticate, DocumentController.getDocument);
 router.get('/', authenticate, DocumentController.listDocuments);
 router.delete('/:documentId', authenticate, DocumentController.deleteDocument);

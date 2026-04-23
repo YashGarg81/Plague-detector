@@ -2,10 +2,11 @@ import { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
-import Document from '../models/Document';
+import Document, { IDocument } from '../models/Document';
 import { FileProcessor } from '../services/fileProcessor';
 import { AIDetectionService } from '../services/aiDetection';
 import { HumanizationService, RewriteStyle } from '../services/humanization';
+import { ReportGeneratorService } from '../services/reportGenerator';
 import { AuthRequest } from '../middleware/auth';
 import config from '../config/environment';
 
@@ -388,6 +389,44 @@ export class DocumentController {
     } catch (error) {
       console.error('Delete document error:', error);
       res.status(500).json({ error: 'Failed to delete document' });
+    }
+  }
+
+  static async downloadDocxReport(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { documentId } = req.params;
+      const document = await Document.findById(documentId);
+
+      if (!document) {
+        res.status(404).json({ error: 'Document not found' });
+        return;
+      }
+
+      if (document.userId.toString() !== req.userId) {
+        res.status(403).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      if (!document.analysis) {
+        res.status(400).json({ error: 'Analyze the document before generating report' });
+        return;
+      }
+
+      const reportBuffer = await ReportGeneratorService.generatePlagiarismDocx(
+        document as unknown as IDocument
+      );
+      const baseName = path.parse(document.originalName).name.replace(/[^a-zA-Z0-9-_]/g, '_');
+      const filename = `${baseName}_plague_report.docx`;
+
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      );
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(reportBuffer);
+    } catch (error) {
+      console.error('Generate report error:', error);
+      res.status(500).json({ error: 'Failed to generate report' });
     }
   }
 

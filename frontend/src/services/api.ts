@@ -69,6 +69,10 @@ export const documentAPI = {
   ) => apiClient.post(`/documents/${documentId}/feedback`, feedback),
   getDocument: (documentId: string) =>
     apiClient.get(`/documents/${documentId}`),
+  downloadReportDocx: (documentId: string) =>
+    apiClient.get(`/documents/${documentId}/report/docx`, {
+      responseType: 'blob',
+    }),
   listDocuments: () => apiClient.get('/documents'),
   deleteDocument: (documentId: string) =>
     apiClient.delete(`/documents/${documentId}`),

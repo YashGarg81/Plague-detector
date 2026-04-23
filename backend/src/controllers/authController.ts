@@ -76,15 +76,15 @@ export class AuthController {
 
   static async login(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { email, password } = req.body;
-      const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+      const { username, password } = req.body;
+      const normalizedUsername = typeof username === 'string' ? username.trim() : '';
 
-      if (!normalizedEmail || !password) {
-        res.status(400).json({ error: 'Email and password required' });
+      if (!normalizedUsername || !password) {
+        res.status(400).json({ error: 'Username and password required' });
         return;
       }
 
-      const user = await User.findOne({ email: normalizedEmail }).select('+password');
+      const user = await User.findOne({ username: normalizedUsername }).select('+password');
 
       if (!user || !(await user.comparePassword(password))) {
         res.status(401).json({ error: 'Invalid credentials' });
