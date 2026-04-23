@@ -37,6 +37,7 @@ const upload = multer({
 // Routes
 router.post('/upload', authenticate, upload.single('file'), DocumentController.uploadDocument);
 router.post('/:documentId/analyze', authenticate, DocumentController.analyzeDocument);
+router.post('/:documentId/feedback', authenticate, DocumentController.upsertFeedback);
 router.post(
   '/:documentId/humanize',
   authenticate,

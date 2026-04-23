@@ -4,6 +4,9 @@ import { useDocumentStore } from '../services/store';
 import FileUpload from '../components/FileUpload';
 import AnalysisReport from '../components/AnalysisReport';
 import ComparisonView from '../components/ComparisonView';
+import AssignmentManager from '../components/AssignmentManager';
+import PeerReviewPanel from '../components/PeerReviewPanel';
+import FeedbackEditor from '../components/FeedbackEditor';
 import toast from 'react-hot-toast';
 import { FiTrash2, FiLoader } from 'react-icons/fi';
 
@@ -11,7 +14,9 @@ const Dashboard: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isHumanizing, setIsHumanizing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'upload' | 'history'>('upload');
+  const [activeTab, setActiveTab] = useState<
+    'upload' | 'history' | 'assignments' | 'peer-review' | 'feedback'
+  >('upload');
   const [currentDocumentId, setCurrentDocumentId] = useState<string | null>(null);
   const [originalText, setOriginalText] = useState('');
   const [currentAnalysis, setCurrentAnalysis] = useState<any>(null);
@@ -70,7 +75,11 @@ const Dashboard: React.FC = () => {
     setIsAnalyzing(true);
 
     try {
-      const response = await documentAPI.analyze(docId);
+      const response = await documentAPI.analyze(docId, {
+        excludeQuotes: true,
+        excludeBibliography: true,
+        excludeSmallMatchesUnderWords: 8,
+      });
       setCurrentAnalysis(response.data.analysis);
       setCurrentDocumentId(docId);
       toast.success('Analysis completed');
@@ -158,6 +167,36 @@ const Dashboard: React.FC = () => {
           >
             History
           </button>
+          <button
+            onClick={() => setActiveTab('assignments')}
+            className={`px-4 py-2 font-medium border-b-2 transition ${
+              activeTab === 'assignments'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Assignments
+          </button>
+          <button
+            onClick={() => setActiveTab('peer-review')}
+            className={`px-4 py-2 font-medium border-b-2 transition ${
+              activeTab === 'peer-review'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Peer Review
+          </button>
+          <button
+            onClick={() => setActiveTab('feedback')}
+            className={`px-4 py-2 font-medium border-b-2 transition ${
+              activeTab === 'feedback'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Feedback
+          </button>
         </div>
 
         {/* Upload Tab */}
@@ -196,8 +235,13 @@ const Dashboard: React.FC = () => {
                   <AnalysisReport
                     aiScore={currentAnalysis.aiScore}
                     plagiarismScore={currentAnalysis.plagiarismScore}
+                    similarityScore={currentAnalysis.similarityScore}
                     confidence={currentAnalysis.confidence}
+                    reportGeneratedInMs={currentAnalysis.reportGeneratedInMs}
                     wordCount={currentAnalysis.wordCount}
+                    sourceMatches={currentAnalysis.sourceMatches}
+                    matchedContentBreakdown={currentAnalysis.matchedContentBreakdown}
+                    writingAnalysis={currentAnalysis.writingAnalysis}
                     flaggedSections={
                       currentAnalysis.flaggedSections || []
                     }
@@ -356,14 +400,22 @@ const Dashboard: React.FC = () => {
                             : '-'}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() =>
-                              handleDeleteDocument(doc.id.toString())
-                            }
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <FiTrash2 />
-                          </button>
+                          <div className="flex items-center justify-end gap-3">
+                            <button
+                              onClick={() => setCurrentDocumentId(doc.id.toString())}
+                              className="text-blue-600 hover:text-blue-700 text-xs"
+                            >
+                              Select
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDeleteDocument(doc.id.toString())
+                              }
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <FiTrash2 />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -372,6 +424,14 @@ const Dashboard: React.FC = () => {
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'assignments' && <AssignmentManager />}
+
+        {activeTab === 'peer-review' && <PeerReviewPanel />}
+
+        {activeTab === 'feedback' && (
+          <FeedbackEditor documentId={currentDocumentId} />
         )}
       </div>
     </div>

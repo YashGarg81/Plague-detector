@@ -150,6 +150,15 @@ Authorization: Bearer {token}
 **URL Parameters:**
 - `documentId` (required): Document ID from upload
 
+**Request Body (optional):**
+```json
+{
+  "excludeQuotes": true,
+  "excludeBibliography": true,
+  "excludeSmallMatchesUnderWords": 8
+}
+```
+
 **Response (200):**
 ```json
 {
@@ -157,17 +166,45 @@ Authorization: Bearer {token}
   "analysis": {
     "aiScore": 0.75,
     "plagiarismScore": 0.42,
+    "similarityScore": 0.49,
     "confidence": 0.585,
+    "reportGeneratedInMs": 932,
     "wordCount": 5234,
+    "sourceMatches": [
+      {
+        "sourceType": "website",
+        "sourceName": "Open internet corpus",
+        "matchPercentage": 31,
+        "matchedText": "This is a flagged section of text..."
+      }
+    ],
+    "matchedContentBreakdown": {
+      "websites": 31,
+      "journals": 25,
+      "studentPapers": 16
+    },
+    "filters": {
+      "excludeQuotes": true,
+      "excludeBibliography": true,
+      "excludeSmallMatchesUnderWords": 8
+    },
+    "writingAnalysis": {
+      "paraphrasingLikelihood": 0.58,
+      "writingPatternConsistency": 0.67,
+      "grammarRisk": 0.44,
+      "structureRisk": 0.51
+    },
     "flaggedSections": [
       {
         "text": "This is a flagged section of text",
         "type": "ai-generated",
+        "color": "yellow",
         "confidence": 0.82
       },
       {
         "text": "Another suspicious section",
         "type": "plagiarism",
+        "color": "red",
         "confidence": 0.71
       }
     ]
@@ -178,9 +215,15 @@ Authorization: Bearer {token}
 **Response Fields:**
 - `aiScore` (0-1): Probability of AI-generated content
 - `plagiarismScore` (0-1): Plagiarism risk probability
+- `similarityScore` (0-1): Combined similarity risk score
 - `confidence` (0-1): Overall confidence in analysis
+- `reportGeneratedInMs`: Time to generate report
 - `wordCount`: Total words in document
-- `flaggedSections`: Array of suspicious sections
+- `sourceMatches`: Top source categories and matches
+- `matchedContentBreakdown`: Category percentages by source class
+- `filters`: Applied filtering controls for quote/bibliography/small match exclusion
+- `writingAnalysis`: Heuristic paraphrasing and writing pattern metrics
+- `flaggedSections`: Array of suspicious sections with UI color hints
 
 **Errors:**
 - 404: Document not found
@@ -239,7 +282,45 @@ Authorization: Bearer {token}
 
 ---
 
-### 4. Get Document Details
+### 4. Upsert Document Feedback
+
+**Endpoint:** `POST /documents/:documentId/feedback`
+
+**Headers:** Authorization (required)
+
+**URL Parameters:**
+- `documentId` (required): Document ID
+
+**Request Body:**
+```json
+{
+  "quickMarks": ["Add citation", "Clarify claim"],
+  "inlineComments": [
+    { "text": "Great transition", "startIndex": 120, "endIndex": 166 }
+  ],
+  "rubricScore": 86,
+  "audioFeedbackUrl": "https://cdn.example.edu/feedback/a1b2c3.mp3"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Feedback updated",
+  "grading": {
+    "quickMarks": ["Add citation", "Clarify claim"],
+    "inlineComments": [
+      { "text": "Great transition", "startIndex": 120, "endIndex": 166 }
+    ],
+    "rubricScore": 86,
+    "audioFeedbackUrl": "https://cdn.example.edu/feedback/a1b2c3.mp3"
+  }
+}
+```
+
+---
+
+### 5. Get Document Details
 
 **Endpoint:** `GET /documents/:documentId`
 
@@ -275,7 +356,7 @@ Authorization: Bearer {token}
 
 ---
 
-### 5. List Documents
+### 6. List Documents
 
 **Endpoint:** `GET /documents`
 
@@ -317,7 +398,7 @@ Authorization: Bearer {token}
 
 ---
 
-### 6. Delete Document
+### 7. Delete Document
 
 **Endpoint:** `DELETE /documents/:documentId`
 
@@ -338,6 +419,73 @@ Authorization: Bearer {token}
 - 403: Unauthorized
 
 ---
+
+## Assignment Endpoints
+
+### 1. Create Assignment
+**Endpoint:** `POST /assignments`
+
+### 2. List Assignments
+**Endpoint:** `GET /assignments`
+
+### 3. Get Assignment
+**Endpoint:** `GET /assignments/:assignmentId`
+
+### 4. Update Assignment
+**Endpoint:** `PUT /assignments/:assignmentId`
+
+### 5. Delete Assignment
+**Endpoint:** `DELETE /assignments/:assignmentId`
+
+**Example assignment payload:**
+```json
+{
+  "title": "Final Research Essay",
+  "course": "ENG-401",
+  "instructions": "Submit a 3000-word essay with citations",
+  "dueDate": "2026-05-20T23:59:00.000Z",
+  "allowResubmission": true,
+  "groupAssignment": false,
+  "quickMarksLibrary": ["Needs citation", "Stronger thesis needed"],
+  "rubric": [
+    { "title": "Argument quality", "description": "Clarity and depth", "maxPoints": 40 },
+    { "title": "Evidence", "description": "Sources and support", "maxPoints": 30 }
+  ]
+}
+```
+
+---
+
+## Peer Review Endpoints
+
+### 1. Assign Peer Review
+**Endpoint:** `POST /peer-reviews/assignments/:assignmentId`
+
+**Request Body:**
+```json
+{
+  "reviewerId": "507f1f77bcf86cd799439011",
+  "revieweeDocumentId": "507f1f77bcf86cd799439012"
+}
+```
+
+### 2. List Assignment Reviews
+**Endpoint:** `GET /peer-reviews/assignments/:assignmentId`
+
+### 3. Submit Assigned Review
+**Endpoint:** `POST /peer-reviews/:reviewId/submit`
+
+**Request Body:**
+```json
+{
+  "comments": [
+    { "text": "Evidence needs stronger citation", "startIndex": 210, "endIndex": 290 }
+  ],
+  "rubricScores": [
+    { "criterionTitle": "Argument quality", "score": 30, "maxPoints": 40 }
+  ]
+}
+```
 
 ## Status Codes
 

@@ -130,6 +130,32 @@ export class AuthController {
       res.status(500).json({ error: 'Failed to get user' });
     }
   }
+
+  static async listUsers(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const search = (req.query.search as string) || '';
+      let query: any = {};
+
+      if (search) {
+        query = {
+          $or: [
+            { username: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+          ],
+        };
+      }
+
+      const users = await User.find(query)
+        .select('_id username email')
+        .limit(50)
+        .sort({ username: 1 });
+
+      res.json({ users });
+    } catch (error) {
+      console.error('List users error:', error);
+      res.status(500).json({ error: 'Failed to list users' });
+    }
+  }
 }
 
 export default AuthController;

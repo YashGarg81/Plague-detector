@@ -8,6 +8,8 @@ import { connectDatabase } from './config/database';
 import config from './config/environment';
 import authRoutes from './routes/authRoutes';
 import documentRoutes from './routes/documentRoutes';
+import assignmentRoutes from './routes/assignmentRoutes';
+import peerReviewRoutes from './routes/peerReviewRoutes';
 
 const app: Express = express();
 
@@ -43,6 +45,8 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/assignments', assignmentRoutes);
+app.use('/api/peer-reviews', peerReviewRoutes);
 
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {

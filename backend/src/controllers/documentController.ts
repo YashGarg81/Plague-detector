@@ -18,6 +18,16 @@ export class DocumentController {
       }
 
       const file = req.file;
+      const {
+        assignmentId,
+        assignmentTitle,
+        assignmentCourse,
+        assignmentDueDate,
+        allowResubmission,
+        isGroupAssignment,
+        peerReviewEnabled,
+        groupId,
+      } = req.body as Record<string, string>;
       const fileExt = path.extname(file.originalname).toLowerCase().slice(1);
 
       // Validate file type
@@ -68,6 +78,18 @@ export class DocumentController {
         mimeType: file.mimetype,
         fileSize: file.size,
         extractedText,
+        assignmentId: assignmentId || undefined,
+        assignment: {
+          title: assignmentTitle || undefined,
+          course: assignmentCourse || undefined,
+          dueDate: assignmentDueDate ? new Date(assignmentDueDate) : undefined,
+          allowResubmission: allowResubmission === 'true',
+          isGroupAssignment: isGroupAssignment === 'true',
+        },
+        collaboration: {
+          peerReviewEnabled: peerReviewEnabled === 'true',
+          groupId: groupId || undefined,
+        },
         status: 'pending',
       });
 
@@ -87,6 +109,8 @@ export class DocumentController {
           originalName: document.originalName,
           fileSize: document.fileSize,
           extractedText: extractedText.substring(0, 500) + '...',
+          assignment: document.assignment,
+          collaboration: document.collaboration,
           status: document.status,
         },
       });
@@ -120,9 +144,24 @@ export class DocumentController {
       await document.save();
 
       try {
+        const {
+          excludeQuotes,
+          excludeBibliography,
+          excludeSmallMatchesUnderWords,
+        } = req.body as {
+          excludeQuotes?: boolean;
+          excludeBibliography?: boolean;
+          excludeSmallMatchesUnderWords?: number;
+        };
+
         // Run analysis
         const analysisResult = await AIDetectionService.analyzeFullDocument(
-          document.extractedText
+          document.extractedText,
+          {
+            excludeQuotes,
+            excludeBibliography,
+            excludeSmallMatchesUnderWords,
+          }
         );
 
         document.analysis = analysisResult as any;
@@ -134,8 +173,14 @@ export class DocumentController {
           analysis: {
             aiScore: analysisResult.aiScore,
             plagiarismScore: analysisResult.plagiarismScore,
+            similarityScore: analysisResult.similarityScore,
             confidence: analysisResult.confidence,
             flaggedSections: analysisResult.flaggedSections,
+            sourceMatches: analysisResult.sourceMatches,
+            matchedContentBreakdown: analysisResult.matchedContentBreakdown,
+            filters: analysisResult.filters,
+            writingAnalysis: analysisResult.writingAnalysis,
+            reportGeneratedInMs: analysisResult.reportGeneratedInMs,
             wordCount: document.extractedText.split(/\s+/).length,
           },
         });
@@ -171,6 +216,11 @@ export class DocumentController {
         return;
       }
 
+      if (!document.extractedText || document.extractedText.trim().length === 0) {
+        res.status(400).json({ error: 'Document has no text to humanize' });
+        return;
+      }
+
       document.status = 'processing';
       await document.save();
 
@@ -181,10 +231,18 @@ export class DocumentController {
           textToHumanize = sections.join('\n');
         }
 
+        if (textToHumanize.trim().length < 20) {
+          throw new Error('Text is too short to humanize (minimum 20 characters)');
+        }
+
         const humanizationResult = await HumanizationService.humanizeText(
           textToHumanize,
           style
         );
+
+        if (!humanizationResult || !humanizationResult.humanizedText) {
+          throw new Error('Failed to generate humanized text');
+        }
 
         if (!document.analysis) {
           document.analysis = {
@@ -226,11 +284,16 @@ export class DocumentController {
         document.error =
           humanizeError instanceof Error ? humanizeError.message : 'Unknown error';
         await document.save();
-        throw humanizeError;
+        console.error('Humanization service error:', humanizeError);
+        res.status(500).json({ 
+          error: `Humanization failed: ${humanizeError instanceof Error ? humanizeError.message : 'Unknown error'}` 
+        });
       }
     } catch (error) {
-      console.error('Humanization error:', error);
-      res.status(500).json({ error: 'Humanization failed' });
+      console.error('Humanization endpoint error:', error);
+      res.status(500).json({ 
+        error: `Humanization failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      });
     }
   }
 
@@ -257,6 +320,9 @@ export class DocumentController {
           fileSize: document.fileSize,
           status: document.status,
           createdAt: document.createdAt,
+          assignment: (document as any).assignment || null,
+          collaboration: (document as any).collaboration || null,
+          grading: (document as any).grading || null,
           extractedText: document.extractedText,
           analysis: document.analysis,
         },
@@ -280,9 +346,11 @@ export class DocumentController {
           fileSize: doc.fileSize,
           status: doc.status,
           createdAt: doc.createdAt,
+          assignment: (doc as any).assignment || null,
           analysis: doc.analysis ? {
             aiScore: (doc.analysis as any).aiScore,
             plagiarismScore: (doc.analysis as any).plagiarismScore,
+            similarityScore: (doc.analysis as any).similarityScore,
           } : null,
         })),
       });
@@ -320,6 +388,53 @@ export class DocumentController {
     } catch (error) {
       console.error('Delete document error:', error);
       res.status(500).json({ error: 'Failed to delete document' });
+    }
+  }
+
+  static async upsertFeedback(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { documentId } = req.params;
+      const {
+        quickMarks = [],
+        inlineComments = [],
+        rubricScore,
+        audioFeedbackUrl,
+      } = req.body as {
+        quickMarks?: string[];
+        inlineComments?: Array<{ text: string; startIndex: number; endIndex: number }>;
+        rubricScore?: number;
+        audioFeedbackUrl?: string;
+      };
+
+      const document = await Document.findById(documentId);
+
+      if (!document) {
+        res.status(404).json({ error: 'Document not found' });
+        return;
+      }
+
+      if (document.userId.toString() !== req.userId) {
+        res.status(403).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      (document as any).grading = {
+        ...((document as any).grading || {}),
+        quickMarks,
+        inlineComments,
+        rubricScore,
+        audioFeedbackUrl,
+      };
+
+      await document.save();
+
+      res.json({
+        message: 'Feedback updated',
+        grading: (document as any).grading,
+      });
+    } catch (error) {
+      console.error('Upsert feedback error:', error);
+      res.status(500).json({ error: 'Failed to update feedback' });
     }
   }
 }
