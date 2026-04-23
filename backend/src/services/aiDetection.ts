@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import config from '../config/environment';
+import AIMicroserviceClient from './aiMicroservice';
 
 const openai = new OpenAI({
   apiKey: config.openaiApiKey,
@@ -50,6 +51,61 @@ export interface AnalysisFilterOptions {
 }
 
 export class AIDetectionService {
+  private static lexicalDiversity(text: string): number {
+    const tokens = text
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((token) => token.length > 1);
+    if (tokens.length === 0) {
+      return 0;
+    }
+    const unique = new Set(tokens);
+    return unique.size / tokens.length;
+  }
+
+  private static sentenceLengthVariance(text: string): number {
+    const lengths = text
+      .split(/[.!?]+/)
+      .map((segment) => segment.trim().split(/\s+/).filter(Boolean).length)
+      .filter((n) => n > 0);
+    if (lengths.length < 2) {
+      return 0.5;
+    }
+
+    const mean = lengths.reduce((sum, n) => sum + n, 0) / lengths.length;
+    const variance =
+      lengths.reduce((sum, n) => sum + Math.pow(n - mean, 2), 0) / lengths.length;
+    return Math.min(1, variance / 80);
+  }
+
+  private static heuristicAIScore(text: string): number {
+    const diversity = this.lexicalDiversity(text);
+    const sentenceVariance = this.sentenceLengthVariance(text);
+    const transitionDensity =
+      (text.match(/\btherefore|moreover|furthermore|additionally\b/gi) || []).length /
+      Math.max(1, text.split(/\s+/).length);
+
+    // Lower lexical diversity + very uniform sentence length can hint AI generation.
+    const score =
+      (1 - Math.min(1, diversity * 1.7)) * 0.45 +
+      (1 - sentenceVariance) * 0.4 +
+      Math.min(1, transitionDensity * 25) * 0.15;
+    return Math.max(0, Math.min(1, score));
+  }
+
+  private static heuristicPlagiarismScore(text: string): number {
+    const quotes = (text.match(/"[^"]+"/g) || []).length;
+    const citations = (text.match(/\(\w+,\s?\d{4}\)|\[\d+\]/g) || []).length;
+    const repeatedPhrases = (text.match(/\b(\w+\s+\w+\s+\w+)\b(?=.*\b\1\b)/gi) || []).length;
+    const words = Math.max(1, text.split(/\s+/).length);
+
+    const score =
+      Math.min(1, quotes / 8) * 0.35 +
+      Math.min(1, citations / 10) * 0.4 +
+      Math.min(1, repeatedPhrases / Math.max(1, words / 30)) * 0.25;
+    return Math.max(0, Math.min(1, score));
+  }
+
   private static applyFilters(text: string, filters: Required<AnalysisFilterOptions>): string {
     let filtered = text;
 
@@ -128,6 +184,11 @@ export class AIDetectionService {
   }
 
   static async detectAIContent(text: string): Promise<number> {
+    const aiServiceResult = await AIMicroserviceClient.detectAIWriting(text);
+    if (aiServiceResult) {
+      return Math.max(0, Math.min(1, aiServiceResult.aiScore));
+    }
+
     try {
       const prompt = `You are an AI content detector. Analyze the following text and determine the probability that it was written by an AI. Consider factors like:
 - Repetitive patterns and unusual word choices
@@ -158,11 +219,16 @@ Example response: 0.75`;
       return score;
     } catch (error) {
       console.error('AI Detection error:', error);
-      return 0.5; // Default to uncertain
+      return this.heuristicAIScore(text);
     }
   }
 
   static async detectPlagiarism(text: string): Promise<number> {
+    const similarityResult = await AIMicroserviceClient.similarityAgainstCorpus(text);
+    if (similarityResult) {
+      return Math.max(0, Math.min(1, similarityResult.similarityScore));
+    }
+
     // This is a simplified plagiarism detector
     // In production, use APIs like Turnitin, Copyscape, or your own database
     try {
@@ -191,7 +257,7 @@ Example: 0.25`;
       return score;
     } catch (error) {
       console.error('Plagiarism Detection error:', error);
-      return 0.3;
+      return this.heuristicPlagiarismScore(text);
     }
   }
 
@@ -255,10 +321,26 @@ Example: 0.25`;
       }
     }
 
-    const { sourceMatches, matchedContentBreakdown } = this.buildSourceMatches(
-      text,
-      similarityScore
+    const similarityServiceResult = await AIMicroserviceClient.similarityAgainstCorpus(
+      normalizedText
     );
+    const { sourceMatches, matchedContentBreakdown } = similarityServiceResult
+      ? {
+          sourceMatches: similarityServiceResult.sourceMatches,
+          matchedContentBreakdown: {
+            websites:
+              similarityServiceResult.sourceMatches.find((s) => s.sourceType === 'website')
+                ?.matchPercentage || 0,
+            journals:
+              similarityServiceResult.sourceMatches.find((s) => s.sourceType === 'journal')
+                ?.matchPercentage || 0,
+            studentPapers:
+              similarityServiceResult.sourceMatches.find(
+                (s) => s.sourceType === 'student-paper'
+              )?.matchPercentage || 0,
+          },
+        }
+      : this.buildSourceMatches(text, similarityScore);
 
     const reportGeneratedInMs = Date.now() - startedAt;
 

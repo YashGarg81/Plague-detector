@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 export interface IUser extends Document {
   username: string;
   email: string;
+  role: 'student' | 'teacher';
   password: string;
   createdAt: Date;
   updatedAt: Date;
@@ -25,6 +26,12 @@ const userSchema = new Schema<IUser>(
       unique: true,
       lowercase: true,
       match: /.+\@.+\..+/,
+    },
+    role: {
+      type: String,
+      enum: ['student', 'teacher'],
+      default: 'student',
+      required: true,
     },
     password: {
       type: String,

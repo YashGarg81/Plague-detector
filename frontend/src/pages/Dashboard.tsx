@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { documentAPI } from '../services/api';
-import { useDocumentStore } from '../services/store';
+import { useAuthStore, useDocumentStore } from '../services/store';
 import FileUpload from '../components/FileUpload';
 import AnalysisReport from '../components/AnalysisReport';
 import ComparisonView from '../components/ComparisonView';
@@ -26,6 +27,8 @@ const Dashboard: React.FC = () => {
   const [showComparison, setShowComparison] = useState(false);
 
   const { documents, addDocument, removeDocument, setDocuments } = useDocumentStore();
+  const user = useAuthStore((state) => state.user);
+  const isTeacher = user?.role === 'teacher';
 
   const loadDocuments = useCallback(async () => {
     try {
@@ -167,37 +170,64 @@ const Dashboard: React.FC = () => {
           >
             History
           </button>
-          <button
-            onClick={() => setActiveTab('assignments')}
-            className={`px-4 py-2 font-medium border-b-2 transition ${
-              activeTab === 'assignments'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Assignments
-          </button>
-          <button
-            onClick={() => setActiveTab('peer-review')}
-            className={`px-4 py-2 font-medium border-b-2 transition ${
-              activeTab === 'peer-review'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Peer Review
-          </button>
-          <button
-            onClick={() => setActiveTab('feedback')}
-            className={`px-4 py-2 font-medium border-b-2 transition ${
-              activeTab === 'feedback'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Feedback
-          </button>
+          {isTeacher && (
+            <>
+              <button
+                onClick={() => setActiveTab('assignments')}
+                className={`px-4 py-2 font-medium border-b-2 transition ${
+                  activeTab === 'assignments'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Assignments
+              </button>
+              <button
+                onClick={() => setActiveTab('peer-review')}
+                className={`px-4 py-2 font-medium border-b-2 transition ${
+                  activeTab === 'peer-review'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Peer Review
+              </button>
+              <button
+                onClick={() => setActiveTab('feedback')}
+                className={`px-4 py-2 font-medium border-b-2 transition ${
+                  activeTab === 'feedback'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Feedback
+              </button>
+            </>
+          )}
         </div>
+
+        {isTeacher && (
+          <div className="mb-8 flex flex-wrap gap-3">
+            <Link
+              to="/teacher/assignments"
+              className="px-3 py-2 text-sm rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
+            >
+              Open Teacher Assignments Page
+            </Link>
+            <Link
+              to="/teacher/peer-review"
+              className="px-3 py-2 text-sm rounded bg-purple-100 text-purple-700 hover:bg-purple-200"
+            >
+              Open Teacher Peer Review Page
+            </Link>
+            <Link
+              to="/teacher/feedback"
+              className="px-3 py-2 text-sm rounded bg-green-100 text-green-700 hover:bg-green-200"
+            >
+              Open Teacher Feedback Page
+            </Link>
+          </div>
+        )}
 
         {/* Upload Tab */}
         {activeTab === 'upload' && (
@@ -426,11 +456,11 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'assignments' && <AssignmentManager />}
+        {activeTab === 'assignments' && isTeacher && <AssignmentManager />}
 
-        {activeTab === 'peer-review' && <PeerReviewPanel />}
+        {activeTab === 'peer-review' && isTeacher && <PeerReviewPanel />}
 
-        {activeTab === 'feedback' && (
+        {activeTab === 'feedback' && isTeacher && (
           <FeedbackEditor documentId={currentDocumentId} />
         )}
       </div>

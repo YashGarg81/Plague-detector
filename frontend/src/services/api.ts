@@ -31,8 +31,13 @@ export const authAPI = {
   register: (data: any) => apiClient.post('/auth/register', data),
   login: (data: any) => apiClient.post('/auth/login', data),
   getCurrentUser: () => apiClient.get('/auth/me'),
-  listUsers: (search?: string) => 
-    apiClient.get('/auth/users', { params: search ? { search } : {} }),
+  listUsers: (search?: string, role?: 'student' | 'teacher') =>
+    apiClient.get('/auth/users', {
+      params: {
+        ...(search ? { search } : {}),
+        ...(role ? { role } : {}),
+      },
+    }),
 };
 
 export const documentAPI = {

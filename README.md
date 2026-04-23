@@ -59,6 +59,12 @@ PLAQUE/
 │   ├── tsconfig.json
 │   └── .env.example
 │
+├── ai-service/               # Python AI/NLP microservice
+│   ├── main.py              # FastAPI entrypoint
+│   ├── similarity.py        # Similarity scoring logic
+│   ├── ai_detection.py      # AI-writing detection logic
+│   └── requirements.txt
+│
 └── docs/                     # Documentation
     ├── API.md               # API documentation
     ├── SETUP.md             # Setup guide
@@ -91,6 +97,12 @@ PLAQUE/
 - **CORS** - Cross-origin requests
 - **pdf-parse** - PDF processing
 - **Mammoth.js** - Word document processing
+
+### AI Service (Python)
+- **FastAPI** - AI microservice API
+- **scikit-learn** - TF-IDF + cosine similarity
+- **spaCy** - NLP preprocessing hooks
+- **sentence-transformers** - semantic similarity (extensible path)
 
 ## 📋 Prerequisites
 
@@ -162,6 +174,20 @@ npm run dev
 cd frontend
 npm start
 # App opens on http://localhost:3000
+```
+
+### Optional: Start Everything With One Command (Windows)
+
+From the project root:
+
+```bash
+.\start-all.cmd
+```
+
+or
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\start-all.ps1
 ```
 
 ### 5. Access the Application

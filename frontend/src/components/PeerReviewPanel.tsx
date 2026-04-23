@@ -16,6 +16,7 @@ interface User {
   _id: string;
   username: string;
   email: string;
+  role: 'student' | 'teacher';
 }
 
 const PeerReviewPanel: React.FC = () => {
@@ -36,7 +37,7 @@ const PeerReviewPanel: React.FC = () => {
       const [assignmentRes, docsRes, usersRes] = await Promise.all([
         assignmentAPI.list(),
         documentAPI.listDocuments(),
-        authAPI.listUsers(),
+        authAPI.listUsers(undefined, 'student'),
       ]);
       setAssignments(assignmentRes.data.assignments || []);
       setDocuments(docsRes.data.documents || []);
@@ -53,7 +54,7 @@ const PeerReviewPanel: React.FC = () => {
     }
     try {
       const response = await authAPI.listUsers(search);
-      setUsers(response.data.users || []);
+      setUsers((response.data.users || []).filter((user: User) => user.role === 'student'));
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to search users');
     }

@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { DocumentController } from '../controllers/documentController';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import config from '../config/environment';
 
 const router = Router();
@@ -37,7 +37,7 @@ const upload = multer({
 // Routes
 router.post('/upload', authenticate, upload.single('file'), DocumentController.uploadDocument);
 router.post('/:documentId/analyze', authenticate, DocumentController.analyzeDocument);
-router.post('/:documentId/feedback', authenticate, DocumentController.upsertFeedback);
+router.post('/:documentId/feedback', authenticate, requireRole(['teacher']), DocumentController.upsertFeedback);
 router.post(
   '/:documentId/humanize',
   authenticate,

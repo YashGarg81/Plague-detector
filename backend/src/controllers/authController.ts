@@ -7,9 +7,10 @@ import { AuthRequest } from '../middleware/auth';
 export class AuthController {
   static async register(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { username, email, password, confirmPassword } = req.body;
+      const { username, email, password, confirmPassword, role } = req.body;
       const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
       const normalizedUsername = typeof username === 'string' ? username.trim() : '';
+      const normalizedRole: 'student' | 'teacher' = role === 'teacher' ? 'teacher' : 'student';
 
       // Validation
       if (!normalizedUsername || !normalizedEmail || !password) {
@@ -41,13 +42,14 @@ export class AuthController {
       const user = new User({
         username: normalizedUsername,
         email: normalizedEmail,
+        role: normalizedRole,
         password,
       });
       await user.save();
 
       // Generate token
       const token: string = (jwt.sign as any)(
-        { userId: user._id, username: user.username },
+        { userId: user._id, username: user.username, role: user.role },
         config.jwtSecret as string,
         { expiresIn: config.jwtExpiry }
       );
@@ -59,6 +61,7 @@ export class AuthController {
           id: user._id,
           username: user.username,
           email: user.email,
+          role: user.role,
         },
       });
     } catch (error) {
@@ -89,7 +92,7 @@ export class AuthController {
       }
 
       const token: string = (jwt.sign as any)(
-        { userId: user._id, username: user.username },
+        { userId: user._id, username: user.username, role: user.role },
         config.jwtSecret as string,
         { expiresIn: config.jwtExpiry }
       );
@@ -101,6 +104,7 @@ export class AuthController {
           id: user._id,
           username: user.username,
           email: user.email,
+          role: user.role,
         },
       });
     } catch (error) {
@@ -123,6 +127,7 @@ export class AuthController {
           id: user._id,
           username: user.username,
           email: user.email,
+          role: user.role,
         },
       });
     } catch (error) {
@@ -134,6 +139,7 @@ export class AuthController {
   static async listUsers(req: AuthRequest, res: Response): Promise<void> {
     try {
       const search = (req.query.search as string) || '';
+      const role = req.query.role as 'student' | 'teacher' | undefined;
       let query: any = {};
 
       if (search) {
@@ -145,8 +151,12 @@ export class AuthController {
         };
       }
 
+      if (role) {
+        query.role = role;
+      }
+
       const users = await User.find(query)
-        .select('_id username email')
+        .select('_id username email role')
         .limit(50)
         .sort({ username: 1 });
 

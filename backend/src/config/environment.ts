@@ -13,6 +13,7 @@ declare global {
       MONGODB_URI?: string;
       JWT_SECRET?: string;
       OPENAI_API_KEY?: string;
+      AI_SERVICE_URL?: string;
       MAX_FILE_SIZE?: string;
       ALLOWED_EXTENSIONS?: string;
       FRONTEND_URL?: string;
@@ -38,6 +39,7 @@ export const config = {
   
   // OpenAI
   openaiApiKey: process.env.OPENAI_API_KEY || '',
+  aiServiceUrl: process.env.AI_SERVICE_URL || 'http://localhost:8000',
   
   // File Upload
   maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '50000000'),
