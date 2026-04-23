@@ -406,5 +406,4 @@ PLAQUE is designed for educational purposes to help students:
 ---
 
 **Made with ❤️ for academic integrity**
-#   P l a g u e - d e t e c t o r  
- 
+#
